@@ -1,35 +1,104 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useAnalyze } from './hooks/useAnalyze';
+import { URLInput } from './components/URLInput';
+import { Scene } from './components/Scene';
+import './styles.css';
 
-function App() {
-  const [count, setCount] = useState(0)
+// One color per topic — matches the colors used in the word cloud
+const TOPIC_COLORS = [
+  '#ff6b6b',
+  '#4ecdc4',
+  '#ffd93d',
+  '#a29bfe',
+  '#fd79a8',
+  '#55efc4',
+  '#fdcb6e',
+];
+
+export default function App() {
+  // Get the data, loading state, error, and analyze function from our custom hook
+  const { data, loading, error, analyze } = useAnalyze();
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+    <div className="app">
+      {/* Top header bar with logo and URL input */}
+      <header className="header">
+        <div className="header-inner">
+          <div className="logo">
+  <span className="logo-bracket">[ </span>
+  <span className="logo-text">3D </span>
+  <span className="logo-word">WORD </span>
+  <span className="logo-cloud">CLOUD</span>
+  <span className="logo-bracket"> ]</span>
+</div>
+          <URLInput onAnalyze={analyze} loading={loading} />
+        </div>
+      </header>
 
-export default App
+      <main className="main">
+        {/* Show this when the user hasn't analyzed anything yet */}
+        {!data && !loading && !error && (
+          <div className="empty-state">
+            <div className="empty-glow" />
+            <p className="empty-text">
+              paste an article URL above<br />
+              <span className="empty-sub">and watch it come alive</span>
+            </p>
+          </div>
+        )}
+
+        {/* Show this while waiting for the backend to respond */}
+        {loading && (
+          <div className="loading-state">
+            <div className="loading-ring" />
+            <p className="loading-text">crawling · extracting · modeling</p>
+          </div>
+        )}
+
+        {/* Show this if something went wrong */}
+        {error && (
+          <div className="error-state">
+            <span className="error-icon">⚠</span>
+            <p className="error-text">{error}</p>
+          </div>
+        )}
+
+        {/* Show the 3D word cloud once we have data */}
+        {data && !loading && (
+          <>
+            {/* The 3D canvas takes up the full screen */}
+            <div className="canvas-wrapper">
+              <Scene words={data.words} />
+            </div>
+
+            {/* Info panel in the bottom left showing article title and topics */}
+            <div className="info-panel">
+              {data.article_title && (
+                <p className="article-title">{data.article_title}</p>
+              )}
+              <p className="word-count">{data.words.length} keywords extracted</p>
+
+              {/* Show each topic with its color dot and top words */}
+              {data.topics.some((t) => t.length > 0) && (
+                <div className="topics-list">
+                  {data.topics.map((topic, i) =>
+                    topic.length > 0 ? (
+                      <div key={i} className="topic-row">
+                        <span
+                          className="topic-dot"
+                          style={{ background: TOPIC_COLORS[i % TOPIC_COLORS.length] }}
+                        />
+                        <span className="topic-words">{topic.slice(0, 4).join(' · ')}</span>
+                      </div>
+                    ) : null
+                  )}
+                </div>
+              )}
+
+              <p className="hint">drag to rotate · scroll to zoom</p>
+            </div>
+          </>
+        )}
+      </main>
+    </div>
+  );
+}
